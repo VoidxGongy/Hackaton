@@ -1,0 +1,301 @@
+generator client {
+  provider = "prisma-client-js"
+  previewFeatures = []
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Usuario {
+  id          String    @id @default(uuid())
+  email       String    @unique
+  password    String
+  nombre      String
+  rol         Rol
+  activo      Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  supervisor  Supervisor?
+  coordinador Coordinador?
+  dispositivos Dispositivo[]
+
+  @@map("usuarios")
+}
+
+enum Rol {
+  SUPERVISOR
+  COORDINADOR
+}
+
+model Supervisor {
+  id          String   @id @default(uuid())
+  usuarioId   String   @unique
+  usuario     Usuario  @relation(fields: [usuarioId], references: [id])
+  numeroIdentificacion String?
+  telefono    String?
+
+  supervisorAreas SupervisorArea[]
+  visitasACargo   Visita[] @relation("SupervisorEnVisits")
+
+  @@map("supervisores")
+}
+
+model Coordinador {
+  id          String   @id @default(uuid())
+  usuarioId   String   @unique
+  usuario     Usuario  @relation(fields: [usuarioId], references: [id])
+  telefono    String?
+
+  novedadesAtendidas Novedad[] @relation("NovedadesPorCoordinador")
+  evaluaciones      EvaluacionCliente[]
+
+  @@map("coordinadores")
+}
+
+model Cliente {
+  id          String   @id @default(uuid())
+  nombre      String
+  email       String?
+  telefono    String?
+  direccion   String?
+  createdAt   DateTime @default(now())
+
+  clientesAreas ClienteArea[]
+  evaluaciones  EvaluacionCliente[]
+  visitas       Visita[]
+
+  @@map("clientes")
+}
+
+model Area {
+  id          String   @id @default(uuid())
+  nombre      String
+  descripcion String?
+  direccion   String?
+  qr_token    String   @unique @default(uuid())
+  clientId   String?
+  clientes   ClienteArea[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  supervisorAreas SupervisorArea[]
+  visitas   Visita[]
+
+  @@map("areas")
+}
+
+model ClienteArea {
+  id        String   @id @default(uuid())
+  clienteId String
+  areaId    String
+  cliente   Cliente  @relation(fields: [clienteId], references: [id])
+  area      Area     @relation(fields: [areaId], references: [id])
+
+  @@unique([clienteId, areaId])
+  @@map("cliente_areas")
+}
+
+model SupervisorArea {
+  id           String     @id @default(uuid())
+  supervisorId String
+  areaId       String
+  supervisor   Supervisor @relation(fields: [supervisorId], references: [id])
+  area         Area       @relation(fields: [areaId], references: [id])
+  createdAt    DateTime   @default(now())
+
+  @@unique([supervisorId, areaId])
+  @@map("supervisor_areas")
+}
+
+enum TipoNovedad {
+  GENERAL
+  CRITICA
+  SUGERENCIA
+  INCUMPLIMIENTO
+  OTRO
+}
+
+enum Prioridad {
+  BAJA
+  MEDIA
+  ALTA
+}
+
+enum PrioridadNovedad {
+  BAJA
+  MEDIA
+  ALTA
+}
+
+model Visita {
+  id              String           @id @default(uuid())
+  supervisorId    String
+  supervisor      Supervisor       @relation("SupervisorEnVisits", fields: [supervisorId], references: [id])
+  areaId          String
+  area            Area             @relation(fields: [areaId], references: [id])
+  clienteId       String?
+  cliente         Cliente?         @relation(fields: [clienteId], references: [id])
+  titulo          String
+  descripcion     String?
+  prioridad       Prioridad         @default(MEDIA)
+  estado          EstadoVisita      @default(PROGRAMADA)
+  fechaProgramada DateTime
+  horaLlegada     DateTime?
+  horaSalida      DateTime?
+  uuid_local      String?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  tareas          TareaRevision[]
+  novedades       Novedad[]
+  evidencias      Evidencia[]
+  evaluaciones     EvaluacionCliente[]
+
+  @@map("visitas")
+}
+
+enum EstadoVisita {
+  PROGRAMADA
+  EN_CURSO
+  COMPLETADA
+  CANCELADA
+}
+
+model TareaRevision {
+  id          String           @id @default(uuid())
+  visitaId    String
+  visita      Visita           @relation(fields: [visitaId], references: [id])
+  descripcion String
+  prioridad   Prioridad         @default(MEDIA)
+  estado      EstadoTarea       @default(PENDIENTE)
+  orden       Int               @default(0)
+  uuid_local  String?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  evidencias  Evidencia[]
+  @@map("tareas_revision")
+}
+
+enum EstadoTarea {
+  PENDIENTE
+  CUMPLIDA
+  NO_CUMPLIDA
+}
+
+model Novedad {
+  id          String           @id @default(uuid())
+  visitaId    String
+  visita      Visita           @relation(fields: [visitaId], references: [id])
+  titulo      String
+  descripcion String?
+  tipo        TipoNovedad        @default(GENERAL)
+  prioridad   PrioridadNovedad  @default(MEDIA)
+  estado      EstadoNovedad      @default(ABIERTA)
+  uuid_local  String?
+  coordinadorId String?
+  coordinador Coordinador? @relation("NovedadesPorCoordinador", fields: [coordinadorId], references: [id])
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  evidencias  Evidencia[]
+  @@map("novedades")
+}
+
+enum EstadoNovedad {
+  ABIERTA
+  EN_REVISION
+  CERRADA
+}
+
+model Evidencia {
+  id          String           @id @default(uuid())
+  uuid_local  String?
+  visitaId    String?
+  visita      Visita?          @relation(fields: [visitaId], references: [id])
+  tareaId     String?
+  tarea       TareaRevision?   @relation(fields: [tareaId], references: [id])
+  novedadId   String?
+  novedad     Novedad?         @relation(fields: [novedadId], references: [id])
+  uri         String
+  tipo        TipoEvidencia      @default(FOTOGRAFICA)
+  descripcion String?
+  createdAt   DateTime          @default(now())
+
+  @@map("evidencias")
+}
+
+enum TipoEvidencia {
+  FOTOGRAFICA
+  VIDEO
+  FIRMA
+  DOCUMENTO
+}
+
+model Dispositivo {
+  id          String   @id @default(uuid())
+  usuarioId   String
+  usuario     Usuario  @relation(fields: [usuarioId], references: [id])
+  pushToken   String?
+  plataforma  String
+  activo      Boolean  @default(true)
+  fechaRegistro DateTime @default(now())
+
+  @@unique([usuarioId, pushToken])
+  @@map("dispositivos")
+}
+
+model SyncOperacion {
+  id              String           @id @default(uuid())
+  uuid_local      String?
+  entidad         String
+  accion          AccionSync
+  estado          EstadoSync       @default(PENDIENTE)
+  datos           Json?
+  resultadoId     String?
+  resultadoJson   Json?
+  errorMensaje    String?
+  intentos        Int               @default(0)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  @@unique([uuid_local, entidad])
+  @@index([entidad, accion, estado])
+  @@map("sync_operaciones")
+}
+
+enum AccionSync {
+  CREAR
+  ACTUALIZAR
+  ELIMINAR
+  CHECK_IN
+}
+
+enum EstadoSync {
+  PENDIENTE
+  APPLIED
+  DUPLICATE
+  REJECTED
+  CONFLICT
+  RETRY
+  COMPLETED
+}
+
+model EvaluacionCliente {
+  id              String   @id @default(uuid())
+  visitaId        String
+  visita          Visita   @relation(fields: [visitaId], references: [id])
+  clienteId       String
+  cliente         Cliente  @relation(fields: [clienteId], references: [id])
+  coordinadorId   String
+  coordinador     Coordinador @relation(fields: [coordinadorId], references: [id])
+  puntuacion      Int?
+  comentario      String?
+  createdAt       DateTime @default(now())
+
+  @@unique([visitaId, clienteId])
+  @@map("evaluaciones_cliente")
+}
