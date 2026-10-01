@@ -1,9 +1,21 @@
+# Node (backend)
 node_modules
 dist
-.env
-.env.docker
 coverage
 *.log
+*.tsbuildinfo
+.env
+.env.docker
+
+# Flutter (frontend)
+build/
+.dart_tool/
+.idea/
+*.iml
+*.jks
+key.properties
+local.properties
+
+# Sistema y editor
 .DS_Store
 .vscode/
-*.tsbuildinfo

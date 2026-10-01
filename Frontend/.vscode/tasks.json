@@ -1,0 +1,15 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Suthon: preparar vista previa Linux",
+      "type": "shell",
+      "command": "bash",
+      "args": ["tool/prepare_linux_preview.sh"],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    }
+  ]
+}

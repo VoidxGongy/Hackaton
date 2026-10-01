@@ -1,0 +1,13 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Suthon — vista previa móvil",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "deviceId": "linux",
+      "preLaunchTask": "Suthon: preparar vista previa Linux"
+    }
+  ]
+}
